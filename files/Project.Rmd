@@ -47,69 +47,81 @@ setDT(org_test_data)
 
 ```
 
-## INTRODUCTION
+## 1 - INTRODUCTION
+
 
 In this project we should use the given data which is about Kobe Bryant's basketball career. It contains the location and circumstances of every field goal attempted by Kobe Bryant during his career. We are trying to predict whether the shot made flag. In order to achieve this goal, we split the train data into train and test sets, and try different methods to find the best one in terms of Area Under the Curve (AUC) values. 
 
 
-## DATA MANIPULATION
+## 2 - DATA MANIPULATION
 
 Firstly, we can observe that there is a large amount of input attributes in the data. It would be wise that we try to eliminate some of the attributes that may indicate close concepts. We see that there are two parameters for x and y coordinates, taking their euclidean distance from (0,0) location would reduce our number of attributes.
 
-```{r Manipulation of the Data Part1, echo = FALSE}
+```{r Manipulation of the Data Part1, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE}
 
 train_data[,shot_made_flag:=as.factor(train_data$shot_made_flag)]
 
 plot <- ggplot(data = train_data ,aes(color = shot_made_flag,y = loc_y, x= loc_x))
-plot + geom_point()  +  theme_light()
+plot + geom_point()  +  theme_light() +  scale_color_manual(values = c("1" = "green", "0" = "red"))
 
 train_data[,loc:= sqrt(loc_x^2 + loc_y^2)]
 
 
 head(data.frame(train_data$loc_x, train_data$loc_y, train_data$loc))
 train_data <- train_data[,-c("loc_x","loc_y")]
+
+```
+
+Also, we made plot with longtitude and latitude attributes and decided that there is correlation between location x and y attributes and these attributes. Because of that reason, it would be wise to eliminate these two attributes to avoid large amount of data.
+
+```{r Manipulation of the Data Partplus, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE}
+
+plot <- ggplot(data = train_data,aes(color = shot_made_flag,y = lat, x= lon))
+plot + geom_point()  +  theme_light() +  scale_color_manual(values = c("1" = "green", "0" = "red"))
+
+train_data <- train_data[,-c("lat","lon")]
+
 ```
 
 
+Secondly, we can combine the minutes and seconds remaining into a times remaining attribute.
 
-Secondly, we can combine the minutes and seconds remaining into a times remaining attribute. Also, team ID and team name attributes that have one level, so we can exclude them from the data.
-
-{r Manipulation of the Data Part2, echo = FALSE}
+```{r Manipulation of the Data Part2, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE}
 
 train_data[,time_remaining := (minutes_remaining*60 + seconds_remaining)]
-head(data.frame(train_data$minutes_remaining,train_data$seconds_remaining))
+head(data.frame(train_data$minutes_remaining,train_data$seconds_remaining, train_data$time_remaining))
 
 train_data <- train_data[,-c("minutes_remaining","seconds_remaining")]
-train_data <- train_data[,-c("team_name","team_id")]
 
-
+```
 
 
 Another attribute that we can inspect is matchup attribute. Matchup includes whether the game is at home or at opponent's home. As opponent attribute is already in the data, we can reduce the matchup attribute to 2 levels which 'ishome' or not. 
 
 
 
-{r  Manipulation of the Data Part3, echo = FALSE}
+```{r  Manipulation of the Data Part3, echo=FALSE, message=FALSE, warning=FALSE}
 train_data[grepl("@", train_data$matchup, fixed=TRUE)==TRUE, ishome:=1]
 train_data[is.na(train_data$ishome)==TRUE, ishome:=0]
 head(data.frame(train_data$matchup, train_data$ishome))
 #str(train_data)
 train_data <- train_data[,-c("matchup")]
 
+```
 
+The data still has many input attributes. Game Date is one of the attributes which has large amount of levels. As we can see on the table, season is more aggregated version of game date, so we can discard game date and use season for shorter run time of the model. Also, team ID and team name attributes that have one level, so we can exclude them from the data.
 
-The data still has many input attributes. Game Date is one of the attributes which has large amount of levels. As we can see on the table, season is more aggregated version of game date, so we can discard game date and use season for shorter run time of the model.
-
-{r Manipulation of the Data Part4, echo = FALSE}
-df <- data.frame(train_data$game_date,train_data$season)
+```{r Manipulation of the Data Part4, echo=FALSE, message=FALSE, warning=FALSE}
+df <- head(data.frame(train_data$game_date,train_data$season))
 df
 
 train_data <- train_data[,-c("game_date")]
+train_data <- train_data[,-c("team_name","team_id")]
+
+```
 
 
-
-
-{r  asfactor, echo = FALSE}
+```{r  asfactor, echo=FALSE, message=FALSE, warning=FALSE}
 
 train_data[,shot_made_flag:=as.factor(train_data$shot_made_flag)]
 
@@ -119,12 +131,8 @@ train_data[,shot_type:=as.factor(train_data$shot_type)]
 train_data[,shot_zone_area:=as.factor(train_data$shot_zone_area)]
 train_data[,shot_zone_basic:=as.factor(train_data$shot_zone_basic)]
 train_data[,shot_zone_range:=as.factor(train_data$shot_zone_range)]
-
-train_data[,game_date:=as.factor(train_data$game_date)]
-
 train_data[,opponent:=as.factor(train_data$opponent)]
 train_data[,combined_shot_type:=as.factor(train_data$combined_shot_type)]
-train_data[,game_id:=as.factor(train_data$game_id)]
 
 split=sample.split(train_data$shot_made_flag,SplitRatio=0.7)
 
@@ -132,88 +140,27 @@ test_data=subset(train_data,split==FALSE)
 train_data=subset(train_data,split==TRUE)
 
 train_data <- train_data[,-c("X")]
+```
+
+## 3 - MODELS
 
 
-## MODELS
+We made data manipulation and made the data easier for our models which will be helpful for the next steps. We can try different models to decide on the best model that we can use for our final prediction on the given test set. So, we search for the largest value for Area Under the Curve. 
 
+We will try 3 models for predictions:
 
-We can try different models to decide on the best model that we can use for our final prediction on the given test set. So, we search for the largest value for Area Under the Curve.
-
-### Modeling with Rpart
-
-We use caret package for our first model. The best cp value for rpart with 10-fold cross validation model is 0.002. The accuracy value is 0.6762627 and AUC value is 0.6643. 
-
-
-{r prediction with rpart, echo = FALSE}
-ctrl1=trainControl(method='cv',number=10)
-fit1=train(shot_made_flag~., data= train_data, method = "rpart",
-           trControl = ctrl1, tuneGrid = expand.grid(cp=(1:10)*0.001))
-#best cp = 0.002
-
-fit1
-
-# Accuracy value = 0.6762627
-pred1 <- predict(fit1, newdata=test_data,type="raw")
-
-
-predictions1= as.numeric(pred1)
-
-auc(roc(test_data$shot_made_flag, predictions1))
-
-#AUC value = 0.6643
-
-confusionMatrix(as.factor(pred1) ,as.factor(test_data$shot_made_flag), positive="1")
-
-pred1 <- prediction(predictions1,test_data$shot_made_flag)
-perf=performance(pred1,"tpr","fpr")
-plot(perf)
-as.numeric(performance(pred1,"auc")@y.values)
-
-
-
-
-### Modeling with GBM
-
-For second model, we use caret package as well. Accuracy was used to select the optimal model using the largest value. The final values used for the model were n.trees = 60, interaction.depth = 4, shrinkage = 0.2 and n.minobsinnode = 20 and Accuracy is 0.6790396. For this model, AUC value is 0.6666.
-
-{r prediction with rpart, echo = FALSE}
-ctrl2 = trainControl(method = "cv", number = 10)
-
-gbmGrid1=expand.grid(interaction.depth = c(3, 4), 
-                    n.trees = c(50, 60), 
-                    shrinkage = (1:2)*0.1,
-                    n.minobsinnode = c(10, 20))
-
-
-fit2=train(shot_made_flag~., data=train_data, method="gbm", metric='Accuracy',
-             trControl = ctrl2,tuneGrid = gbmGrid1)
-fit2
-
-
-pred2 <- predict(fit2, newdata=test_data,type="raw")
-
-
-predictions2= as.numeric(pred2)
-
-auc(roc(test_data$shot_made_flag, predictions2))
-
-confusionMatrix(as.factor(pred2) ,as.factor(test_data$shot_made_flag), positive="1")
-
-pred2 <- prediction(predictions2,test_data$shot_made_flag)
-perf2=performance(pred2,"tpr","fpr")
-plot(perf2)
-as.numeric(performance(pred2,"auc")@y.values)
-
-
++ Modeling with GLM
++ Modeling with Rpart
++ Modeling with GBM
 
 ### Modeling with GLM
 
-Because action type and game ID attributes have large amount of levels, when we split the given train data, some levels aren't split equally. So, we can disregard these levels for only testing purposes.The AUC value for GLM model is 0.6639954.
+Because action type and game ID attributes have large amount of levels, when we split the given train data, some levels aren't split equally. So, we can disregard these levels for only testing purposes.The AUC value for GLM model is 0.6641.
 
-{r prediction with rpart, echo = FALSE}
+```{r prediction with GLM, echo=FALSE, message=FALSE, warning=FALSE}
+test_data[,game_id:=as.factor(test_data$game_id)]
+train_data[,game_id:=as.factor(train_data$game_id)]
 fit3=glm(shot_made_flag~.,data=train_data,family=binomial(link = "logit"))
-
-fit3
 
 test_datav2 <- test_data[action_type != "Driving Floating Bank Jump Shot",]
 test_datav2 <- test_datav2[action_type != "Running Slam Dunk Shot",]
@@ -231,11 +178,157 @@ predictions3= as.numeric(pred3)
 
 auc(roc(test_datav2$shot_made_flag, predictions3))
 
-#AUC = 0.6639954
-
-
 
 pred3 <- prediction(predictions3,test_datav2$shot_made_flag)
 perf3=performance(pred3,"tpr","fpr")
 plot(perf3)
 as.numeric(performance(pred3,"auc")@y.values)
+```
+
+
+### Modeling with Rpart
+
+We use caret package for our first model. The best cp value for rpart with 10-fold cross validation model is 0.002. The accuracy value is 0.6833 and AUC value is 0.6643. 
+
+
+```{r prediction with rpart, echo=FALSE, message=FALSE, warning=FALSE}
+train_data[,game_id:=as.integer(train_data$game_id)]
+test_data[,game_id:=as.integer(test_data$game_id)]
+
+ctrl1=trainControl(method='cv',number=10)
+fit1=train(shot_made_flag~., data= train_data, method = "rpart",
+           trControl = ctrl1, tuneGrid = expand.grid(cp=(1:10)*0.001))
+#best cp = 0.002
+
+# Accuracy value = 0.6762627
+pred1 <- predict(fit1, newdata=test_data,type="raw")
+
+
+predictions1= as.numeric(pred1)
+
+auc(roc(test_data$shot_made_flag, predictions1))
+
+
+confusionMatrix(as.factor(pred1) ,as.factor(test_data$shot_made_flag), positive="1")
+
+pred1 <- prediction(predictions1,test_data$shot_made_flag)
+perf=performance(pred1,"tpr","fpr")
+plot(perf)
+as.numeric(performance(pred1,"auc")@y.values)
+```
+
+### Modeling with GBM
+
+For second model, we use caret package as well. Accuracy was used to select the optimal model using the largest value. The final values used for the model were n.trees = 100, interaction.depth = 4, shrinkage = 0.1, n.minobsinnode = 10. and accuracy = 0.6881. AUC value for the model is 0.6673.
+
+```{r prediction with GBM, echo=FALSE, message=FALSE, warning=FALSE}
+ctrl2 = trainControl(method = "cv", number = 10)
+
+#gbmGrid1=expand.grid(interaction.depth = c(3, 4), 
+ #                    n.trees = c(50,60,100), 
+  #                   shrinkage = (1:2)*0.1 ,
+   #                 n.minobsinnode = c(10, 20))
+
+
+gbmGrid2=expand.grid(interaction.depth = c(4), 
+                     n.trees = c(100), 
+                     shrinkage = (1)*0.1,
+                     n.minobsinnode = c(10))
+
+
+fit2=train(shot_made_flag~., data=train_data, method="gbm", metric='Accuracy',
+           trControl = ctrl2,tuneGrid = gbmGrid2)
+
+
+
+pred2 <- predict(fit2, newdata=test_data,type="raw")
+
+
+predictions2= as.numeric(pred2)
+
+auc(roc(test_data$shot_made_flag, predictions2))
+
+confusionMatrix(as.factor(pred2) ,as.factor(test_data$shot_made_flag), positive="1")
+
+pred2 <- prediction(predictions2,test_data$shot_made_flag)
+perf2=performance(pred2,"tpr","fpr")
+plot(perf2)
+as.numeric(performance(pred2,"auc")@y.values)
+
+```
+
+
+
+## 4 - PREDICTIONS WITH FINAL MODEL
+
+While testing for possible models for our predictions, the largest AUC value we have obtained is for the GBM model and the final values used for the model were n.trees = 100, interaction.depth = 4, shrinkage = 0.1, n.minobsinnode = 10. We build or model on the original train dataset and obtain our predictions using the final model.
+
+```{r Final Prediction, echo=FALSE, message=FALSE, warning=FALSE}
+
+org_train_data[,loc:= sqrt(loc_x^2 + loc_y^2)]
+org_train_data <- org_train_data[,-c("loc_x","loc_y")]
+org_train_data[grepl("@", org_train_data$matchup, fixed=TRUE)==TRUE, ishome:=1]
+org_train_data[is.na(org_train_data$ishome)==TRUE, ishome:=0]
+org_train_data <- org_train_data[,-c("matchup")]
+org_train_data[,time_remaining := (minutes_remaining*60 + seconds_remaining)]
+org_train_data <- org_train_data[,-c("minutes_remaining","seconds_remaining")]
+org_train_data <- org_train_data[,-c("team_name","team_id")]
+org_train_data[,shot_made_flag:=as.factor(org_train_data$shot_made_flag)]
+org_train_data[,action_type:=as.factor(org_train_data$action_type)]
+org_train_data[,season:=as.factor(org_train_data$season)]
+org_train_data[,shot_type:=as.factor(org_train_data$shot_type)]
+org_train_data[,shot_zone_area:=as.factor(org_train_data$shot_zone_area)]
+org_train_data[,shot_zone_basic:=as.factor(org_train_data$shot_zone_basic)]
+org_train_data[,shot_zone_range:=as.factor(org_train_data$shot_zone_range)]
+
+org_train_data[,opponent:=as.factor(org_train_data$opponent)]
+org_train_data[,combined_shot_type:=as.factor(org_train_data$combined_shot_type)]
+
+org_train_data <- org_train_data[,-c("X")]
+org_train_data <- org_train_data[,-c("game_date")]
+
+
+org_test_data[,loc:= sqrt(loc_x^2 + loc_y^2)]
+org_test_data <- org_test_data[,-c("loc_x","loc_y")]
+org_test_data[grepl("@", org_test_data$matchup, fixed=TRUE)==TRUE, ishome:=1]
+org_test_data[is.na(org_test_data$ishome)==TRUE, ishome:=0]
+org_test_data <- org_test_data[,-c("matchup")]
+org_test_data[,time_remaining := (minutes_remaining*60 + seconds_remaining)]
+org_test_data <- org_test_data[,-c("minutes_remaining","seconds_remaining")]
+org_test_data <- org_test_data[,-c("team_name","team_id")]
+org_test_data[,shot_made_flag:=as.factor(org_test_data$shot_made_flag)]
+org_test_data[,action_type:=as.factor(org_test_data$action_type)]
+org_test_data[,season:=as.factor(org_test_data$season)]
+org_test_data[,shot_type:=as.factor(org_test_data$shot_type)]
+org_test_data[,shot_zone_area:=as.factor(org_test_data$shot_zone_area)]
+org_test_data[,shot_zone_basic:=as.factor(org_test_data$shot_zone_basic)]
+org_test_data[,shot_zone_range:=as.factor(org_test_data$shot_zone_range)]
+
+org_test_data[,opponent:=as.factor(org_test_data$opponent)]
+org_test_data[,combined_shot_type:=as.factor(org_test_data$combined_shot_type)]
+org_test_data <- org_test_data[,-c("game_date")]
+
+
+ctrl2 = trainControl(method = "cv", number = 10)
+gbmGrid2=expand.grid(interaction.depth = c(4), 
+                     n.trees = c(100), 
+                     shrinkage = (1)*0.1,
+                     n.minobsinnode = c(10))
+
+fitfinal=train(shot_made_flag~., data=org_train_data, method="gbm", metric='Accuracy',
+               trControl = ctrl2,tuneGrid = gbmGrid2)
+
+pred_final2 <- predict(fitfinal, newdata=org_test_data,type="prob")
+
+pred_final2 <- predict(fitfinal, org_test_data, type= "prob")
+shot_made_flag<-pred_final2[,2]
+shot_id=org_test_data$X.1
+submission2= data.table(shot_id,shot_made_flag)
+#write.csv(submission2,"C:/Users/Asus/Desktop/submission2.csv",row.names = F)
+
+```
+
+
+## 5 - CONCLUSION
+
+For this assignment, we made predictions about Kobe Bryant's shot made flags. We made data manipulation and tried different models. We selected GBM model because it gave us the biggest AUC value which was an indicator that it was the best among them.
