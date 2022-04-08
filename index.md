@@ -21,5 +21,5 @@
 [Here](files/Project_Updated.Rmd) is our Project's rmd file.
 
 ## IE 425 - Data Mining Project - (30.06.2021)
-[Here]files/Project.html) is our Project's html file. 
+[Here](files/Project.html) is our Project's html file. 
 [Here](files/Project.Rmd) is our Project's rmd file.
