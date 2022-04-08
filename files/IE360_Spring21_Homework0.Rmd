@@ -1,0 +1,39 @@
+---
+title: "Interesting Forecasting Applications with R"
+author: Oya Hoban - IE360 - Spring 2021
+---
+```{r,echo=FALSE,results="hide"}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+
+```
+
+1. [Time series forecasting using ARIMA models](https://blogs.oracle.com/datascience/introduction-to-forecasting-with-arima-in-r)
+
+    This example is important because it introduces the forecasting methodology using ARIMA models in R. The steps are ...
+
+2.[The Best Guide to Time Series Forecasting in R](https://www.simplilearn.com/tutorials/data-science-tutorial/time-series-forecasting-in-r)
+
+This website could be useful for introductory material while learning Time Series Forecasting in R.
+...
+
+3.[Country-Wise Forecast Model for the Effective Reproduction Number Rt of Coronavirus Disease](https://www.frontiersin.org/articles/10.3389/fphy.2020.00304/full)
+
+This article discusses p forecast models applying ARIMA models, it may be interesting considering it is one of the most important issues in present.
+
+...
+
+4.[Forecasting in R: a People Analytics Tool](https://www.analyticsinhr.com/blog/forecasting-in-r/)
+
+Website serves interesting examples of ModelTime in the domain of People Analytics using Google Trends data.
+
+...
+
+5.[An introduction to weather forecasting with deep learning](https://blogs.rstudio.com/ai/posts/2020-09-01-weather-prediction/)
+
+...
+
+

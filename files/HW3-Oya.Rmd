@@ -1,0 +1,372 @@
+---
+title: "HW3-Oya Hoban"
+author: "Oya Hoban - IE360 - Spring 2021"
+date: " 06 06 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=TRUE}
+
+library(xts)
+library(lubridate)
+library(forecast)
+library(tseries)
+library(urca)
+require(data.table)
+require(zoo)
+require(ggplot2)
+
+data_path='C:/Users/DELL/Desktop/2020-2021 Ders 2/IE 360/RealTimeConsumption.csv'
+data=fread(data_path)
+data[,Date:=as.Date(Date)]
+
+
+data[,datetime:=ymd(Date)+dhours(Hour)]
+data=data[order(datetime)] 
+
+Real_Values <- data[46873:47208]
+data <- data[1:46872]
+
+
+```
+
+In this homework,we are trying to predict 14 days (from 7th of May to 20th of May in 2021) of Electricity Consumption of Turkey by using the Electricity consumption data obtained from [EPİAŞ](https://seffaflik.epias.com.tr/transparency/tuketim/gerceklesen-tuketim/gercek-zamanli-tuketim.xhtml). The data used include the dates from 2016, January to 2021 May. In order to build prediction models, firstly decomposition of series are executed, then decided on Auto Regressive or Moving Average method to build the necessary model.
+
+# 1.)Getting to Know the Series
+## 1.1)Hourly Electricity Consumption
+
+```{r Hourly Consumption Line Graph , fig.align='center', fig.cap= "Figure 1.1- Hourly Electricity Consumption in Turkey", echo=FALSE }
+
+
+mygg1 <- ggplot(data, aes(x = datetime , y = Consumption)) 
+
+mygg1 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Hourly Electricity Consumption in Turkey",x= "Datetime", y= "Hourly Electricity Consumption" ) 
+
+unt_test1=ur.kpss(data$Consumption) 
+summary(unt_test1)
+
+```
+Looking at the figure 1.1, we can see that the series has a trend since the orange trend line is not just horizontal and also seasonality since there seems to be a repeating pattern. Also we use KPSS Unit root test to see whether the series is stationary ot not, and Value of test-statistic is: 12.695, this is higher than all the critical values in all percentiles so we reject the null hypothesis that suggests the series is stationary.
+
+```{r Hourly Consumption Decomposition , fig.align='center', fig.cap= "Figure 1.2- Hourly Electricity Consumption Decomposition", echo=FALSE, error=FALSE}
+
+
+hourly_consumption <- ts(data= data$Consumption, frequency = 24)
+
+ts_decomposed_hourly=decompose(hourly_consumption, type="additive")
+plot(ts_decomposed_hourly)
+acf(hourly_consumption, na.action = na.pass)
+pacf(hourly_consumption)
+
+
+unt_test3=ur.kpss(ts_decomposed_hourly$random) 
+summary(unt_test3)
+
+
+```
+
+After decomposing the hourly series with frequency 24,we can clearly see the trend part of the series, however seasonality part can not be observed as clearly. And looking at the random part, which is the part without the seasonality and trend, it fits the random distribution with zero mean and constant variance.
+And after the execution of the KPSS unit root test on the random part of decomposed hourly series, the value of the test statistic is much smaller than the critical values, so we fail to reject the null hypothesis and we can say that the random part is stationary.
+
+On the graph of ACF we see a peak at the 24th lag, this may be an indicator for there is an 24 hourly/daily pattern in the series.
+
+## 1.2)Average Daily Electricity Consumption
+
+```{r Daily Consumption Line Graph , fig.align='center', fig.cap= "Figure 1.3- Daily Electricity Consumption in Turkey Line Graph", echo=FALSE}
+daily_consumption=data[,list(avg_consumption=mean(Consumption)),by=list(Date)]
+daily_real <- Real_Values[,list(avg_consumption=mean(Consumption)),by=list(Date)]
+
+daily_consumption[,Date:=as.Date(Date)]
+daily_real [,Date:=as.Date(Date)]
+
+
+mygg2 <- ggplot(daily_consumption, aes(x = Date , y =avg_consumption )) 
+
+mygg2 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Average Daily Electricity Consumption",x= "Date", y= "Daily Electricity Consumption", lwd = 0.75 ) 
+
+acf(daily_consumption$avg_consumption)
+
+unt_test2=ur.kpss(daily_consumption$avg_consumption) 
+summary(unt_test2)
+
+
+```
+When we take the daily average of hourly series, and plot it, we get a more clear graph, we can also observe that the daily series is not stationary as well. Applying the KPSS Unit root test, the value is higher than the critical values, so we reject the null hypothesis. Also, looking at the ACF graph, we observe a peak at lag 7, so this could be an indicator that there may be an cyclic behavior of the series in a 7 day cycle. And since we don't observe an increasing variance over the series, we can use additive decomposition.
+
+```{r Daily Electricity Consumption Decomposition , fig.align='center', fig.cap= "Figure 1.3- Daily Electricity Consumption Decomposition", echo=FALSE }
+
+ts_daily_consumption <- ts(daily_consumption$avg_consumption, freq=7 )
+ts_decomposed_daily <- decompose(ts_daily_consumption, type="additive")
+plot(ts_decomposed_daily)
+
+unt_test4=ur.kpss(ts_decomposed_daily$random) 
+summary(unt_test4)
+
+
+```
+After decomposing the daily series with frequency 7,we can clearly see the trend part of the series. And looking at the random part, which is the part without the seasonality and trend, it fits the random distribution with zero mean and constant variance, with some peaks, probably due to holidays and special days.
+And after the execution of the KPSS unit root test on the random part of decomposed daily series, the value of the test statistic is much smaller than the critical values, so we fail to reject the null hypothesis and we can say that the random part is stationary.
+
+## 2.1) Decomposition of the Hourly Series with 168 Hour Frequency
+
+After obtaining the information that, there may be a 24 hour frequency in the hourly series and 7 day frequency in the daily series, it may be good to decompose the hourly series with 24 hour* 7 day = 168 hour frequency, so that we could detect seasonality better.Also, using additive decomposition since we don't see increasing variance in the series.
+
+```{r Hourly Electricity Consumption DEcomposition with 168 Hour Frequency, echo=FALSE}
+
+ts_168_hour <- ts(data=data$Consumption, freq=168)
+acf(ts_168_hour)
+ts_168_hour_decomposed <- decompose(ts_168_hour, type = "additive")
+plot(ts_168_hour_decomposed)
+
+
+
+unt_test6=ur.kpss(ts_168_hour_decomposed$random) 
+summary(unt_test6)
+
+
+```
+After decomposing, we can see that random part is stationary, we use KPSS unit rot test to test it, and the value of the test statistic is small enough to fail to reject the null hypothesis. SO, we can use the random part to build our model.
+
+
+
+```{r Deseasonalizing the Series with  168 Hourly Frequence, echo=FALSE}
+deseasonalized1 <- (ts_168_hour - ts_168_hour_decomposed$seasonal)
+
+ts.plot(deseasonalized1, main="Deseasonalized Series with 168 Hourly Frequency") 
+acf(deseasonalized1)
+pacf(deseasonalized1)
+
+detrend1<-deseasonalized1-ts_168_hour_decomposed$trend
+ts.plot(detrend1, main="Detrended Series with 168 Hourly Frequency")
+acf(detrend1, na.action = na.pass, main="ACF of Deseasonlized and Detrended Series with 168 Hourly Frequency")
+pacf(detrend1, na.action = na.pass, main="PACF of Deseasonlized and Detrended Series with 168 Hourly Frequency")
+ts.plot(ts_168_hour_decomposed$random, main="Deseasonalized and Detrended Series with 168 Hourly Frequency")
+
+library(stats)
+model1 <- arima(detrend1, order=c(1,0,0))
+print(model1)
+AIC(model1)
+BIC(model1)
+
+modelt <- arima(detrend1, order=c(24,0,0))
+print(modelt)
+AIC(modelt)
+BIC(modelt)
+
+model2 <- arima(detrend1, order=c(0,1,0))
+print(model2)
+AIC(model2)
+BIC(model2)
+
+model3 <- arima(detrend1, order=c(0,0,1))
+print(model3)
+AIC(model3)
+BIC(model3)
+
+```
+
+After deseasonalizing and detrending the decomposed series, when we look at the ACF and PACF graph of the random part, we can see that in ACF there is sinusodial pattern and in PACF there is significant peak at lag 1 and lag 24, so we can try to use AR(1) and AR(24) to model the series, also we can try different ARIMA models as well, and decide which one to use depending on their AIC and BIC values. And out of all models, we see the smallest AIC value in ARIMA(24,0,0) model, so we can use it to build our prediction model.
+
+
+## 2.2) Decomposition of the Daily Series with 7 Day Frequency
+
+In part 1, we also detected that there may be a 7 day seasonality in the series as well. We can try to see how the model would work in a daily series compared to hourly series, with a more aggregate approach with daiy series.
+
+So, firstly we deseasonalize and detrend the series with 7 day frequency.
+```{r Deseasonalizing Daily Series, echo=FALSE}
+
+
+deseasonalized<-daily_consumption$avg_consumption-ts_decomposed_daily$seasonal
+
+ts.plot(deseasonalized,main="Deseasonalized Series with Daily Frequency")
+acf(deseasonalized)
+
+detrend<-deseasonalized-ts_decomposed_daily$trend
+
+ts.plot(detrend, main="Detrended Series with Daily Frequency")
+acf(detrend, na.action = na.pass, main="ACF of Deseasonlized and Detrended Series with 7 Day Frequency")
+pacf(detrend ,na.action = na.pass, main="PACF of Deseasonlized and Detrended Series with 7 Day Frequency")
+library(stats)
+model4 <- arima(detrend, order=c(1,0,0))
+print(model4)
+AIC(model4)
+BIC(model4)
+model5 <- arima(detrend, order=c(0,1,0))
+print(model5)
+AIC(model5)
+BIC(model5)
+
+model6 <- arima(detrend, order=c(0,0,1))
+print(model6)
+AIC(model6)
+BIC(model6)
+
+model7 <- arima(detrend, order=c(1,0,1))
+print(model7)
+AIC(model7)
+BIC(model7)
+
+model8 <- arima(detrend, order=c(4,0,0))
+print(model8)
+AIC(model8)
+BIC(model8)
+
+
+model9<- arima(detrend, order=c(7,0,0))
+print(model9)
+AIC(model9)
+BIC(model9)
+
+
+
+```
+
+
+
+
+After deseasonalizing and detrending the decomposed series, when we look at the ACF and PACF graph of the random part, we can see that in ACF there is sinusodial pattern and in PACF there is significant peak at lag 1 , lag 4 and lag7, so we can try to use AR(1) ,AR(4) and AR(7) to model the series, also we can try different ARIMA models as well, and decide which one to use depending on their AIC and BIC values. And out of all models, we see the smallest AIC value in ARIMA(7,0,0) model, so we can use it to build our prediction model.
+
+# 3.) Predicting 14 Days of Electricity Consumption in Turkey
+
+## 3.1) Prediction Based on the Model that is Built with Series of 168 Hour Frequency
+In order to build our prediction model, we are going to used random part of the decomposed series, with using the best ARIMA model that we have obtained, in this case this will be ARIMA(24,0,0) that we have obtained in part 2.1 for the hourly series with 168 hour frequency.
+
+```{r Prediction Chunk with Hourly Decomposition of frequency  168, echo=FALSE}
+
+model_fitted1 <- ts_168_hour_decomposed$random - residuals(modelt)
+
+
+plot(ts_168_hour_decomposed$random, xlab = "Date", ylab="Random part and fitted Values", main="Figure 3.1 -Hourly Electricity Consumption and Model Fitted of Deseasonalized and Detrended Series with 168 Hour Freq ")
+points(model_fitted1, type = "l", col = 2, lty = 2)
+
+
+
+prediction1 <- predict(modelt, n.ahead = 14*24)
+
+
+last_trend_value1 <- tail(ts_168_hour_decomposed$trend[!is.na(ts_168_hour_decomposed$trend)],14*24)
+
+
+
+
+last_seasonality1 <- ts_168_hour_decomposed$seasonal[1:336]
+
+
+days_to_predict<- as.Date(as.Date("2021-05-07"):as.Date("2021-05-20"))
+
+my_model1 <- prediction1$pred + last_trend_value1 + last_seasonality1
+
+
+my_model2 <- xts(data.frame(my_model1, Real_Values$Consumption ), order.by = Real_Values$datetime, frequency = 24 )
+
+colnames(my_model2)<- c("Predicted" ,"Real Values")
+plot(my_model2, legend.loc="topleft", main="Figure 3.2 - Hourly Electricity Consumption in Turkey Predicted and Real Values")
+
+
+
+my_model1 <- data.table(my_model1, rep(0:23, times=14, each=1), rep(1:14, times=14, each=24))
+
+colnames(my_model1) <- c("Prediction", "Hour","Day")
+
+
+avg_Daily_predicted <- my_model1[, list(avg_cons=mean(Prediction)),by=list(Day)]
+
+
+avg_Daily_predicted$Day <- days_to_predict
+
+
+my_model1 <- xts(x = data.frame(avg_Daily_predicted$avg_cons, daily_real$avg_consumption), order.by = days_to_predict, frequency = 7)
+colnames(my_model1) <- c("Predictions", "Real Values")
+
+
+plot(my_model1, main = "Figure 3.3-Electricity Consumption in Turkey and Prediction ", legend.loc = "topleft", ylab = "Electricity Consumption")
+
+dev1 <- data.frame( (abs(my_model2$Predicted-my_model2$`Real Values`)/my_model2$`Real Values`)*100, Real_Values$datetime)
+colnames(dev1)<- c("Deviation_as_Percentage", "datetime")
+print(dev1)
+gg1 <- ggplot(dev1 , aes(x= datetime , y=Deviation_as_Percentage) ) 
+
+gg1 + geom_line() + labs(title= "Figure 3.4-Deviations of Predictions from the Real Consumption Rate for Hourly Decomposition Model",x= "Dates", y= "Deviations" )
+
+Weighted_mean_ape1 <- sum((dev1$Deviation_as_Percentage*my_model2$`Real Values`)/ sum(my_model2$`Real Values`))
+
+n1 <- Weighted_mean_ape1
+
+
+print(paste(" Weighted Mean Absolute Percentage Error : ",n1 ) )
+
+```
+
+
+
+
+Looking at the figures 3.1 and 3.2, the fitted values capture the most of the real values' behaviour. In figure 3.3 we can observe how the predicted values and real values are fitted, the predicted values capture the real values' behaviour but still there is deviation from the real values. So, the average daily predictions deviation from the average daily real consumption is calculated, so that we can compare it to the model we built with daily series. The deviation seem to have its peak around 13-14 th of May, and this coincides with Ramadan Holiday in Turkey, since we don't give the model this information, this may be the reason why the model is deviating from the real value.
+
+## 3.2) Prediction Based on the Model that is Built with Averaged Daily Series with 7 Day Frequency
+In this part we build our prediction model based on daily averaged hourly series, and after decomposing the daily series with 7 day frequency.
+
+In order to build our prediction model, we are going to used random part of the decomposed daily series, with using the best ARIMA model that we have obtained which is the model with the smallest AIC value, in this case this will be ARIMA(7,0,0) that we have obtained in part 2.2 for the daily series with 7 day frequency.
+
+```{r Prediction Chunk with Daily Decomposition, echo=FALSE}
+
+model_fitted <- ts_decomposed_daily$random - residuals(model9)
+
+
+plot(ts_decomposed_daily$random, xlab = "Date", ylab = "Random Part of Decomposed Daily Series and Fitted Values",main="Figure 3.5-Deseasonalized and Detrended Model of Daily Series for Avg Daily Consumption")
+points(model_fitted, type = "l", col = 2, lty = 2)
+
+
+
+prediction <- predict(model9, n.ahead = 14)
+
+
+last_trend_value <-tail(ts_decomposed_daily$trend[!is.na(ts_decomposed_daily$trend)], 14)
+
+
+
+
+last_seasonality <- ts_decomposed_daily$seasonal[1:14]
+
+
+my_model <- prediction$pred + last_trend_value + last_seasonality
+
+
+
+my_model <- xts(x = data.frame(prediction$pred +last_trend_value + last_seasonality, daily_real$avg_consumption), order.by = days_to_predict, frequency = 7)
+
+colnames(my_model) <- c("Prediction", "Real Values")
+
+
+plot(my_model, main = "Figure 3.6-Electricity Consumption Rate in Turkey Predicted and Real Values", legend.loc = "topleft", ylab = "Electricity Consumption")
+
+
+
+
+dev2 <- data.frame( (abs(my_model$Prediction- daily_real$avg_consumption)/daily_real$avg_consumption)*100, days_to_predict)
+colnames(dev2)<- c("Deviation_as_Percentage2", "Date")
+print(dev2)
+gg2 <- ggplot(dev2 , aes(x= Date , y=Deviation_as_Percentage2) ) 
+
+gg2 + geom_line()+ labs(title= "Deviations of Predictions from the Real Consumption Rate for Daily Model",x= "Dates", y= "Deviations" )
+
+
+Weighted_mean_ape <- sum((dev2$Deviation_as_Percentage2*daily_real$avg_consumption)/ sum(daily_real$avg_consumption))
+
+n <- Weighted_mean_ape
+
+
+print(paste(" Weighted Mean Absolute Percentage Error : ",n ) )
+
+```
+
+
+Looking at the figures 3.5 and 3.6, the fitted values capture the most of the real values' behaviour, however deviations exist. In figure 3.6 we can observe how the predicted values and real values are fitted, the predicted values capture the real values' behaviour but still there is deviation from the real values. The deviation seem to have its peak around 13-16 May period, and this is the time in Ramadan Holiday in Turkey, since we don't give the model this information, this may be the reason why the model is deviating from the real value.
+
+
+# 4.) CONCLUSION
+
+For predicting average daily electricity consumption values in Turkey, hourly series with 168 hour frequency and daiy series with 7 day frequency, both model's deviation from the real values has its peak around 13-16 May period, since it coincides with Ramadan Holiday in Turkey, and special days information is not included in the model this may be one of the reasons why our model's accuracy is low. In order to improve the model, these kind of information can be included in the model, also possible we can work on increasing the stationarity of the data.
+
+Comparing the Weighted Mean Absolute Percentage Error of our prediction models with hourly series with 168 hour frequency and daiy series with 7 day frequency, even though they both are very close, daily series' WMAPE values seem to be smaller, this may be an indicator that aggregating is a better solution in this case. This may be considered if we wish to develop the project further. Overall, we can say that both models work fine, deviation from the real valuesis not too big.

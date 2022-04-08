@@ -1,0 +1,223 @@
+---
+title: "Homework 1"
+author: "Oya Hoban - IE360 - Spring 2021"
+date: "18 04 2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE , echo=TRUE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+	message = FALSE
+)
+##The libraries
+library(tidyverse)
+library(EVDS)
+library(lubridate)
+
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(RColorBrewer)
+
+mydset2 <- read_delim("C:/Users/DELL/Desktop/mydset2.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%Y-%m"), 
+        Percentage = col_number()), trim_ws = TRUE)
+
+Total_Consumer_Credits <- read_delim("C:/Users/DELL/Desktop/Total_Consumer_Credits.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%Y-%m"), 
+        Total_Credits = col_number()), trim_ws = TRUE)
+
+Unemployment <- read_delim("C:/Users/DELL/Desktop/Unemployment.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%Y-%m")), 
+    trim_ws = TRUE)
+
+```
+In this homework three different datasets are obtained from 2017 January to 2020 December and plotted over time, in order to examine whether they have correlation between them. Then, search trends of a keyword in Google Trends for each dataset plotted over time to see if there is any correlations between Google searches and data we are examining.
+
+For this homework, 'General Consumer Price Index in Turkey Over Time', 'Total Consumer Borrowings in Turkey Over Time' and 'Unemployment Rate in Turkey Over Time' datasets that have been extracted from [EVDS](https://evds2.tcmb.gov.tr/index.php) are examined. Also, frequency search from [Google Trends](https://trends.google.com/trends/?geo=US) data for keywords 'Satın Al', 'Kredi' and 'İş İlan' are examined for datasets, respectively, to see if there is any correlation between them.
+
+# 1-General Consumer Price Index in Turkey Over Time  
+
+
+
+```{r CPI Line Graph ,fig.align='center', fig.cap="Figure 1.1- General Consumer Price Index in Turkey Over Time ", echo=FALSE}
+library(readr)
+
+mygg1 <- ggplot(mydset2, aes(x = Date , y = Total)) 
+
+mygg1 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "General Consumer Price Index in Turkey Over Time(Monthly)",x= "Dates", y= "General Consumer Price Index in Turkey" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+```
+Consumer Price Index(CPI) is a measurement for consumer's spendings on a fixed basket of goods. It gives the general idea about price levels during a period of time. We can see on the Figure 1.1 that General Price Index in Turkey have an ever-increasing trend, almost linearly proportional. Also on October 2018, we can see that there is a rapid increase.
+
+
+
+```{r General Consumer Price Index Histograms, fig.align='center', fig.cap = "Figure 1.2- Histograms of Total Consumer Spendings Over Time (TL)", echo=FALSE }
+gghist1 <- ggplot(data = mydset2 , aes(x = Total))
+
+gghist1 + geom_histogram(bins = 24, alpha = 0.6, aes(color= Year , fill= Year))  +
+  labs(title = "Histograms of General Consumer Price Index in Turkey Over Time",
+       x = "General Consumer Price Index in Turkey Over Time",
+       y = "Frequency") +
+  theme(legend.position = "none") + facet_wrap(~Year)  
+
+
+```
+
+
+
+```{r General Consumer Price Index in Turkey Over Time Boxplots, fig.align='center', fig.cap="Figure 1.3- Boxplot of Total Consumer Spendings Over Time (TL)", echo=FALSE}
+
+boxplot(Total~Year, data = mydset2 , xlab = "Years" , ylab= "Total", main= "General Consumer Price Index in Turkey Over Time Based on Years", col = c("green","yellow","purple", "cyan"))
+
+
+
+```
+
+It can be observed more clearly on histograms from Figure 1.2 and boxplots from Figure 1.3 that CPI keep getting increasing over time. Also, looking at the box plots, deviation in months of 2018 is the largest, it can be explained by the rapid increase in October 2018 that have been observed in Figure 1.1
+
+```{r Google Trends Satın Al, fig.align= 'center', fig.cap= "Figure 1.4- Boxplot of Satın Al Keyword Search Over Time" , echo= FALSE}
+
+
+
+SatÃ_n_Al <- read_delim("C:/Users/DELL/Desktop/Satın_Al.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%d.%m.%Y")), 
+    trim_ws = TRUE)
+
+boxplot(Keyword~Year , data = SatÃ_n_Al, xlab= "Years", ylab= "Keyword" , main= "'Satın Al' Keyword Search Over the Years in Turkey", col = c("green","yellow","purple", "cyan" ))
+
+
+
+
+```
+
+CPI is related with consumer's buying behaviours, since it is a measurement for price level in the economy. That is why 'Satın al' keyword has been chosen to examine from Google Trends, to see if there is any correlation between CPI and searching for 'Satın al'. It can be observed from the Figure 1.4 that, from 2017 to 2019 the each for the keyword has been decreased, as CPI increases which has been observed from the previous figures. It can be commented that as price level increase, consumer's search for buying new goods decrease. However, we see an increasing trend from 2019 to 2020, this behavior does not fit with what we observed from 2017 to 2019.
+
+# 2-Total Consumer Borrowings from Banks in Turkey
+
+In this section, consumer's borrowings from banks for their spendings will be examined.
+
+```{r Total Consumer Borrowings Line Graph ,fig.align='center', fig.cap="Figure 2.1- Line Graph of Total Consumer Borrowings Over Time (in 1 Million TL) ", echo=FALSE}
+library(readr)
+
+ ggplot(Total_Consumer_Credits, aes(x = Date , y = Total_Credits))  + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Total Consumer Borrowings(Monthly, in 1 Million TL)",x= "Dates", y= "Total Borrowings by Consumers" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+```
+It can be seen on the Figure 2.1 that even though there is a decrease from 2018 to 2019 and then constant trend during 2019, in Consumer Borrowings, there is an increasing trend. The decrease from 2018 to 2019 can be explained by interest rate increase due to economical crises that have been faced in Turkey, because of the exchange rate's rapid increase in that period of time.
+
+
+```{r Borrowings Histograms, fig.align='center', fig.cap = "Figure 2.2- Histograms of Total Consumer Borrowings Over Time (in 1 Million TL)", echo=FALSE }
+gghist1 <- ggplot(data = Total_Consumer_Credits , aes(x = Total_Credits))
+
+gghist1 + geom_histogram(bins = 24, alpha = 0.6, aes(color= Year , fill= Year))  +
+  labs(title = "Histograms of Consumer Spendings Over Time (in 1 Million TL)",
+       x = "Total Consumer Spendings Over Time (in 1 Million TL)",
+       y = "Frequency") +
+  theme(legend.position = "none") + facet_wrap(~Year)  
+
+
+```
+
+```{r Borrowings Boxplots, fig.align='center', fig.cap="Figure 2.3- Boxplot of Total Consumer Borrowings Over Time (in 1 Million TL)", echo=FALSE}
+
+boxplot(Total_Credits~Year, data = Total_Consumer_Credits , xlab = "Years" , ylab= "Total Borrowings", main= "Total Consumer Borrowings Over Time (in 1 Million TL) Based on Years", col = c("green","yellow","purple", "cyan"))
+
+
+
+```
+Increasing trend can be observed more clearly on histograms from Figure 2.2. Also, looking at Figure 2.3, largest deviations are observed in 2020. This situation may be a result of economy's uncertain course due to pandemic. Because of this uncertainty, expectations of interest rates may be uncertain and that is why consumer's behavior over borrowing may differ monthly.
+
+```{r Google Trends Kredi, fig.align= 'center', fig.cap= "Figure 2.4- Boxplot of Kredi Keyword Search Over Time" , echo= FALSE}
+
+
+
+ Kredi <- read_delim("C:/Users/DELL/Desktop/Kredi.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%d.%m.%Y")), 
+    trim_ws = TRUE)
+
+boxplot(Kredi~Year , data = Kredi, xlab= "Years", ylab= "Keyword" , main= "'Kredi' Keyword Search Over the Years in Turkey", col = c("green","yellow","purple", "cyan" ))
+
+
+
+
+```
+
+'Kredi' keyword is examined from Google Trends, to see if people's interest over time correlates with total consumer borrowings over time, or not. If we look at the Figure 2.4, the changes throughout years is not drastic, we can comment that people's interest about 'Kredi' is relatively constant. However, we can observe that, even though relatively small, there is an increase from 2018 to 2019. This could be, again, a result of economical crisis that have been faced in Turkey. Because of the uncertainty, people may be more interested in the 'Kredi' keyword.
+
+
+# 3- Unemployment Rate in Turkey Over Time 
+
+Unemployment Rate is the percent of the labor force that doesn't work in a given period of time. It can be said that it is a measurement for country's well-being. 
+
+```{r Unemployment Rate Line Graph ,fig.align='center', fig.cap="Figure 3.1- Line Graph of Unemployment Rate Over Time (TL) ", echo=FALSE}
+library(readr)
+
+
+
+ ggplot(Unemployment, aes(x = Date , y = Unemployment_Rate))  + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Unemployment Rate in Turkey (Monthly)",x= "Dates", y= "Unemployment Rate in Turkey" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+```
+If we look at the Figure 3.1, there is an increase from 2018 October to 2019, this can also be explained by the economical crisis that the country has faced in that period of time. When we look at the curve in Figure 3.1, the fitted curve in order to observe the trend is shaped as sine function. 
+
+```{r Unemployment Rate Histograms, fig.align='center', fig.cap = "Figure 3.2- Histograms of Unemployment Rate", echo=FALSE }
+
+
+ggplot(data = Unemployment , aes(x = Unemployment_Rate)) + geom_histogram(bins = 24, alpha = 0.6, aes(color= Year , fill= Year))  +
+  labs(title = "Unemployment Rate Over Time",
+       x = "Unemployment",
+       y = "Frequency") +
+  theme(legend.position = "none") + facet_wrap(~Year)  
+
+
+
+```
+
+
+
+```{r Unemployment Rate Mean Histograms, fig.align='center', fig.cap = "Figure 3.3-  Mean of Unemployment Rate", echo=FALSE }
+boxplot(mean(Unemployment$Unemployment_Rate[1:12]), mean(Unemployment$Unemployment_Rate[12:24]),mean(Unemployment$Unemployment_Rate[24:36]), mean(Unemployment$Unemployment_Rate[36:48]), names=c("2017", "2018" , "2019", "2020"), col=c("green","yellow","purple", "cyan" ) )
+
+
+```
+
+In the Figure 3.3, the mean of unemployment rate in every year is plotted. The sine function shaped trend can be observed with this figure as well.
+
+```{r Google Trends İs İlan, fig.align= 'center', fig.cap= "Figure 3.4- Boxplot of 'İş İlanı' Keyword Search Over Time" , echo= FALSE}
+
+
+Ã_s_Ã_lan <- read_delim("C:/Users/DELL/Desktop/İs_İlan.csv", 
+    ";", escape_double = FALSE, col_types = cols(Date = col_date(format = "%d.%m.%Y")), 
+  trim_ws = TRUE)
+
+
+boxplot(Keyword~Year , data = Ã_s_Ã_lan, xlab= "Years", ylab= "Keyword" , main= "'İş İlan' Keyword Search Over the Years in Turkey", col = c("green","yellow","purple", "cyan" ))
+
+
+
+
+```
+
+"İş İlan" keyword's popularity has been observed for this part, from Google Trends. As we look at the Figure 3.4 and Figure 3.3, we can observe a correlation between Mean of Unemployment Rate and search popularity for "İş İlan" keyword. It can be commented that, as unemployment rate rises, the search for "İş İlan" rises as well. 
+
+If we look at all of the figures, it can be observed that there is a negative correlation between total consumer borrowings and unemployment rate from 2017 to 2019, looking at Figure 2.3 and Figure 3.1. 
+
+
+## References
+
+[Google Trends](https://trends.google.com/trends/?geo=US)
+
+[EVDS](https://evds2.tcmb.gov.tr/index.php)

@@ -1,0 +1,379 @@
+---
+title: "Oya-HW2"
+author: "Oya Hoban - IE360 - Spring 2021"
+date: "07 05 2021"
+output: html_document
+---
+
+```{r Setup, echo = TRUE, include=FALSE}
+
+library(TSstudio)
+library(feasts)
+library(tsibble)
+library(readxl)
+library(ggplot2)
+library(data.table)
+library(lubridate)
+library(ggthemes)
+library(xts)
+library(forecast)
+library(ggcorrplot)
+library(tidyverse)
+library(zoo)
+library(readr)
+library(readr)
+
+
+data1 <-  read_excel("C:/Users/DELL/Desktop/HW2Data1.xlsx")
+
+
+data2 <-  read_excel("C:/Users/DELL/Desktop/HW2Data2.xlsx")
+
+data1$Date <- as.Date(parse_date_time(data1$Date,"Ym"), format = "%Y-%m")
+
+
+datatable <- data.table("Date"=as.Date(data1$Date, format= "%Y-%m"), "CPI" = data1$CPI,"USD"=data2$USD, "Interest_Rate"=data2$Interest_Rate, "Cons_Credit" = data2$Cons_Credit, "Trust_Index"=data2$Trust_Index )
+
+
+
+
+```
+
+
+# Homework 2
+
+In this homework Consumer Price Index for Food and Non-Alcoholic Beverages have been inspected and tried to be predicted with respect to USD-TL Exchange Rate, Interest Rate, Total Consumer Credits and Consumer Trust Index datasets which are obtained from 2013 January to 2021 March. Since Consumer Price Index is an indicator for a fixed basket of good's relative price over time, it gives an idea about overall price level of the economy. So, relevant dataset which effect the overall price level have been chosen in order to inspect how they correlate. Interest Rate, Exchange Rate and Total Consumer Credits are familiar concept that have been learned in Economics courses. And Consumer Trust Index is an measurement for consumers trust over the economy's well-being.
+
+For this homework,all datasets that have been extracted from [EVDS](https://evds2.tcmb.gov.tr/index.php) are examined.
+
+
+
+## 1.1 Getting to Know the Data
+
+
+```{r Line Graph , fig.align='center', fig.cap= "Figure 1.1- Consumer Price Index in Turkey Over Time", echo=FALSE }
+
+mygg1 <- ggplot(datatable, aes(x = Date , y = CPI)) 
+
+mygg1 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Consumer Price Index in Turkey Over Time(Monthly)",x= "Dates", y= "Consumer Price Index in Turkey" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+```
+
+```{r Line Graph2 ,fig.align='center', fig.cap="Figure 1.2- Interest Rate Over Time ", echo=FALSE}
+mygg2 <- ggplot(datatable, aes(x = Date , y = Interest_Rate)) 
+mygg2 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Interest Rate in Turkey Over Time(Monthly)",x= "Dates", y= "Interest rate" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+
+
+```
+
+
+
+
+```{r Line Graph3 ,fig.align='center', fig.cap="Figure 1.3- USD Exchange Rates in Turkey Over Time ", echo=FALSE}
+mygg3 <- ggplot(datatable, aes(x = Date , y = USD)) 
+mygg3 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "USD Exchange Rates in Turkey Over Time",x= "Dates", y= "USD Exchange Rates" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+
+
+```
+```{r Line Graph4 ,fig.align='center', fig.cap="Figure 1.4- Total Consumer Credits Borrowed From Banks ", echo=FALSE}
+mygg4 <- ggplot(datatable, aes(x = Date , y = Cons_Credit)) 
+mygg4 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Total Consumer Credits",x= "Dates", y= "Consumer Credits" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+
+
+```
+```{r Line Graph5 ,fig.align='center', fig.cap="Figure 1.5- Consmer Trust Index ", echo=FALSE}
+mygg5 <- ggplot(datatable, aes(x = Date , y = Cons_Credit)) 
+mygg5 + geom_line() +
+  geom_smooth(fill = NA, color="orange",linetype = "twodash", size = 0.5) + labs(title= "Consmer Trust Index",x= "Dates", y= "Consumer Trust Index" ) + scale_x_date(date_breaks = "6 month",
+               date_labels = "%Y %b",
+               date_minor_breaks = "1 month")
+
+
+
+
+```
+After plotting the all the attributes over time,
+In Figure 1.1 we can see that CPI has an increasing trend over time, however some variations can be observed
+
+In Figure 1.2, we can see that Interest Rate has a increasing trend from 2013 to 2018, but variations from trend line increases from 2018 to 2021.
+
+In Figure 1.3, 1.4 and 1.5 we also see an increasing trend with variations from trend line. Variations increase in Figure 1.4 and 1.5 from 2018 to 2021, like it did in Interest Rate plot.
+
+
+
+
+```{r echo=FALSE, include=FALSE}
+datatable_ts <- ts(data= datatable[,-1],frequency = 12, start=c(2013,1))
+
+
+
+```
+
+## 1.2 Generating Time Series Regression Models
+
+```{r  Regression Model 1, echo=FALSE}
+
+fit1 <- lm(CPI~ USD + Interest_Rate+ Cons_Credit + Trust_Index, data= datatable_ts)
+summary(fit1)
+
+
+
+
+```
+
+```{r  Regression Model 1.2,fig.align='center', fig.cap="Residuals for Model 1 ", echo=FALSE}
+
+checkresiduals(fit1)
+
+
+
+```
+
+
+After setting a model for dependent variable CPI with independent attributes USD Exchange Rate, Total Consumer Credits, Interest Rate and Consumer Trust Index, a significantly small p-vale is obtained, so we fail to reject the null hypothesis that suggest that there is no correlation between variables.So, we conclude that there is a correlation between variables. Also we observe that Interest_Rate is non-basic variable.We obtain a model with Adjusted R Squared Value = 0.9714 , which is not a bad start.
+
+After checking the residuals' plots, we can see some distortions from the zero mean from Index 60 to 100. Also, in there are high autocorrelation results as well, that we should eliminate. Also, looking at the histogram, the residuals don't really fit the normally distributed shaped function. So, these are the issues to deal with for this model.
+
+In section 1.1, CPI's variations from the trend can be observed, and also Interest Rate has the largest variations from 2018 to 2021, these may be causing high residual errors and high autocorrelation. In order to decrease these variations a new data table is obtained with taking the square root of CPI and also taking thr logarithm of Interest Rate. And the model is built again, to see these variables correlations.
+
+```{r  Regression Model 2, echo=FALSE}
+month <- seq(1,12,by=1)
+datatable_log1 <- data.table(datatable[, -"Interest_Rate"], "Interest_Rate_log"=as.numeric(log(datatable$Interest_Rate)), "CPI_sqrt"=as.numeric(sqrt(datatable$CPI)),month )
+
+datatable_log<- data.table(datatable_log1[,-"CPI"])
+datatable_log[,trend:=1:.N]
+datatable_ts_log <- ts( data= datatable_log[,-1],frequency = 12, start=c(2013,1))
+datatable_ts_log <- cbind(datatable_ts_log)
+
+
+
+fit2 <- lm(CPI_sqrt~ USD +  Cons_Credit + Trust_Index + Interest_Rate_log + as.factor(month) +trend, data= datatable_ts_log)
+summary(fit2)
+
+
+
+
+```
+This time we see an Adjusted R-Squared Value =0.9883, we can say that model 2 is better than the model 1. 
+
+
+```{r  Regression Model 2.2,fig.align='center', fig.cap="Residuals for Model 2 " ,echo=FALSE}
+
+checkresiduals(fit2)
+
+
+
+```
+
+Looking at the residuals' plots, residual errors have decreased, residuals' distribution shape fits better in normal distribution's shape, also high ACF generally eliminated, however there is still high ACF rate in lag1 and lag2 which should be eliminated. 
+
+```{r  echo=FALSE ,fig.align='center', fig.cap="CPI Sqrt Box Plots in order to Observe Outliers "}
+
+Year <-  c('2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021')
+datatable_log$Year <- factor(format(datatable_log$Date, "%Y"), levels = Year)
+                      
+
+boxplot(CPI_sqrt~Year, data = datatable_log , xlab = "Years" , ylab= "CPI_sqrt", main= "Squareroot of Consumer Price Index in Turkey Over Time Based on Years")
+summary(datatable_log)
+
+
+
+
+```
+The boxplot has been created in order to check outliers, however there is only one outlier seen in the figure, which may not generate a problem.
+
+
+In order to get rid of high autocorrelation rate that have been observed in lag 1 and lag2, the below operations are performed and lag1 and lag2 lagged variables are included in the model.
+
+```{r Regression Model 3, echo=FALSE}
+lag1 = shift(residuals(fit2), 1)
+datatable_log=cbind(datatable_log,lag1)
+datatable_log[is.na(lag1)== T, lag1:=0]
+lag2 = shift(residuals(fit2), 1)
+datatable_log=cbind(datatable_log,lag2)
+datatable_log[is.na(lag2)== T, lag2:=0]
+datatable_log[is.na(lag2)== T, lag2:=0]
+fit3 <-lm(CPI_sqrt~ USD +  Cons_Credit + Trust_Index + Interest_Rate_log + as.factor(month) + lag1 + lag2+ trend, data= datatable_ts_log)
+summary(fit3)
+
+
+
+
+
+
+
+```
+
+We know have an even better Adjusted R Squared Rates = 0.9952, so we can say that Model 3 is relatively better than the first two models.
+
+
+```{r  Regression Model 3.2,fig.align='center', fig.cap=" Residuals for Model 3", echo=FALSE}
+
+checkresiduals(fit3)
+
+
+
+```
+
+Looking at the residuals' plots, residual errors have decreased with some peaks, residuals' distribution shape fit have not significantly changed, also high ACF generally eliminated.
+
+In order to eliminate high variations from mean 0 that have been observed in residuals, outliers of the residuals that fit the %95 and %5 quantiles have been detected, and included in the model 4 as dummy variables.
+
+```{r  echo=FALSE, fig.align='center', fig.cap="Eliminating Outlier Residuals " }
+quantile_down<-quantile(fit3$residuals, 0.05)
+quantile_up <- quantile(fit3$residuals, 0.95)
+
+
+
+outlier_1 <- fit3$residuals[fit3$residuals > quantile_up]
+
+outlier_2 <-  fit3$residuals[fit3$residuals < quantile_down]
+
+
+Outliers_up_Index <- rep(0,99)
+
+Outliers_Down_Index <- rep(0,99)
+Outliers_up_Index[c(16,20,35,89,98)] =1
+
+Outliers_Down_Index[c(14,47,68,77,92)] =1
+
+datatable_log <- cbind( datatable_log,Outliers_Down_Index,Outliers_up_Index)
+
+
+
+fit4 <- lm(CPI_sqrt~ USD +  Cons_Credit + Trust_Index + Interest_Rate_log + as.factor(month) + lag1 + lag2 + trend + Outliers_Down_Index + Outliers_up_Index , data= datatable_log)
+summary(fit4)
+
+
+
+```
+In model 4, we obtained the highest Adjsted R-Squared Values so far, 0.9975. We can say that model 4 is relatively better than the first three models.
+
+```{r  Regression Model 4.2, echo=FALSE, fig.align='center', fig.cap=" Residuals Model 4"}
+
+checkresiduals(fit4)
+
+
+
+```
+Looking at the residuals' plots, residual errors have decreased.Rresiduals' distribution shape fit have not significantly changed again, also all ACF values are within the range. We can say that model 4 is overall better than the rest with residuals normally distributed with mean ~ 0.
+
+## 1.3 Prediction
+In this section, we inspect whether the model 4 could predict past data and also using this training if it could predict the future month's CPI. 
+
+Looking at fitted vs residuals plot, residuals seem to be randomly distributed which what we wanted.
+Looking at the fitted vs CPI_sqrt plot and actual & Predicted CPI vs time plot, we can clearly see the correlation between them, which can conclude that this is a good model.
+
+
+
+
+```{r Fitted Prediction Values , echo=FALSE, warning=FALSE}
+
+
+datatable_log[, fitted:=fitted(fit4)]
+datatable_log[, residual:=residuals(fit4)]
+
+
+datatable_log %>%
+  ggplot(aes(x=fitted, y=residual)) + 
+  geom_point()
+
+
+datatable_log %>%
+  
+  ggplot(aes(x=fitted, y=CPI_sqrt)) + 
+  geom_point() +
+  geom_abline(slope=1, intercept=0)
+
+
+cols <- c("predicted" = "orange", "actual" = "blue")
+ggplot() + 
+  geom_line(data = datatable_log, aes(x = trend, y = fitted,color = "predicted")) +
+  geom_line(data = datatable_log, aes(x = trend, y = CPI_sqrt,color = "actual")) +
+  xlab('time') +
+  ylab('CPI_sqrt') +
+  scale_color_manual(values = cols)
+
+
+
+
+
+```
+
+
+
+For attributes we have taken as independent, their means in data have been selected in order to predict dependent variable CPI_sqrt in April 2021, with using Model 4. And predicted CPI_sqrt = 27.58566 and CPI = 27.58566^2 = 760.9686. Which is not far off, considering last observed CPI value = 646.41 in March 2021, and taking into account that CPI has an increasing trend, it may be highly to observe 760.9686 in April 2021.
+
+
+
+```{r Predicting April 2021, echo=FALSE, warning=FALSE, include=FALSE}
+
+month_info = 4
+datatable_log=rbind(datatable_log,data.table(month=as.factor(month_info)),fill=T)
+datatable_log[,trend:=1:.N]
+
+
+predict(datatable_log$USD)
+datatable_log[is.na(USD)==T, USD:= 3.977]
+
+datatable_log[is.na(Cons_Credit)==T, Cons_Credit:= 3370899867]
+predict(datatable_log$Cons_Credit)
+
+datatable_log[is.na(Trust_Index)==T, Trust_Index:= 88.08 ]
+predict(datatable_log$Trust_Index)
+
+datatable_log[is.na(Interest_Rate_log)==T, Interest_Rate_log:= 2.405 ]
+predict(datatable_log$Interest_Rate_log)
+
+datatable_log[is.na(month)==T, month:= 4]
+predict(datatable_log$month)
+
+datatable_log[is.na(lag1)==T, lag1:= -0.004908 ]
+predict(datatable_log$lag1)
+
+datatable_log[is.na(lag2)==T, lag2:= -0.004908  ]
+predict(datatable_log$lag2)
+
+datatable_log[is.na(trend)==T, trend:= 50.50  ]
+predict(datatable_log$trend)
+
+datatable_log[is.na(Outliers_Down_Index)==T, Outliers_Down_Index:= 0]
+predict(datatable_log$Outliers_Down_Index)
+datatable_log[is.na(Outliers_up_Index)==T,Outliers_up_Index:= 0 ]
+predict(datatable_log$Outliers_up_Index)
+
+
+
+
+datatable_log[is.na(fitted)==T,fitted:=predict(fit4,datatable_log[is.na(fitted)==T])]
+
+April_2021_CPI <- 27.58566^2
+April_2021_CPI
+
+```
+
+
+
+
+
+
+
