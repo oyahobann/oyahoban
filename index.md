@@ -1,4 +1,4 @@
-# This journal is for data science related projects that I worked on which are for Time Series Forecasting and Data Mining courses.
+# This journal is for data science related projects that I worked on, for Time Series Forecasting and Data Mining courses.
 
 ## HW0 (01.04.2021)
 [Here](files/IE360_Spring21_Homework0.html) is my 5 interesting R examples.
